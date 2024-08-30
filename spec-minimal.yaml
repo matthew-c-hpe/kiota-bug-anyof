@@ -1,0 +1,121 @@
+# A minimal OpenAPI spec which highlights a potential bug in Kiota client autogeneration
+# This API spec has been verified as valid using the redocly CLI's lint functionality under its default configuration.
+#
+#
+# This provides a minimal spec for the reproduction of a bug with Kiota's client autogeneration.
+# The bug relates to a property in the request body.
+#
+# Given an item in the properties map:
+# - if using anyOf as schema type,
+# - if the number of items in that item's list is 2,
+# - and if at least one of those items is nullable (nullable: true),
+# - and if at least one of those items is NOT an "object" data type (EXCEPT if the other is "array"),
+# Then the Kiota autogeneration fails with the following critical error:
+# crit: Kiota.Builder.KiotaBuilder[0]
+#       error generating the client: One or more errors occurred. (Sequence contains no matching element)
+#
+# Examples: FAIL
+#
+# 1. 2 nullable items, non-object data types
+# anyOf:
+# - type: string
+#   nullable: true
+# - type: integer
+#   format: int64
+#   nullable: true
+#
+# 2. 2 items, 1 of which is nullable, non-object data types
+# anyOf:
+# - type: string
+#   nullable: true
+# - type: integer
+#   format: int64
+#
+# 3. 2 items, both arrays
+# anyOf:
+# - type: array
+#   nullable: true
+# - type: array
+#   nullable: true
+#
+# Examples: SUCCESS
+#
+# 1. 1 item
+# anyOf:
+#   - type: string
+#     nullable: true
+#
+# 2. Greater than 2 items
+# anyOf:
+#   - type: string
+#     nullable: true
+#   - type: integer
+#     format: int64
+#     nullable: true
+#   - type: boolean
+#     nullable: true
+#
+#
+# 3. 2 items, both object data type
+# anyOf:
+# - type: object
+#   nullable: true
+# - type: object
+#   nullable: true
+#
+# 4. 2 items, one object, one array data type
+# anyOf:
+# - type: object
+#   nullable: true
+# - type: array
+#   nullable: true
+
+openapi: 3.0.3
+
+info:
+  title: Sample Spec
+  description: Description
+  version: 1.0.0
+  license: 
+    name: Foo
+    url: foo
+
+servers:
+  - url: 'https://foo/api/v1'
+    description: A description    
+
+paths:
+  /instances:
+    post: 
+      summary: Create an Instance
+      operationId: createInstance
+
+      requestBody: 
+        content: 
+          application/json: 
+            schema: 
+              type: object
+
+              # Bug caused here
+              properties:
+                breakingProperty:
+                  anyOf:
+                    - type: string
+                      nullable: true
+                    - type: integer
+                      format: int64
+                      nullable: true
+
+      responses:
+        '200':    # status code
+          description: The instance
+          content:
+            application/json:
+              schema: 
+                type: array
+                items: 
+                  type: string
+        '400':    # status code
+          description: 404 error
+
+security: []
